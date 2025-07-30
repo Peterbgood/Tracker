@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Website Development Tracker</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 20px;
+    }
+    .tracker, .chart {
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      margin-bottom: 20px;
+    }
+    .tracker h2, .chart h2 {
+      color: #333;
+      margin-bottom: 15px;
+    }
+    .stage {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+      background: #f9f9f9;
+      border-radius: 5px;
+      margin-bottom: 10px;
+    }
+    .stage span {
+      font-size: 16px;
+      color: #333;
+    }
+    select {
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .reset-btn {
+      display: block;
+      margin: 15px 0;
+      padding: 10px 20px;
+      background: #dc3545;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    .reset-btn:hover {
+      background: #c82333;
+    }
+    canvas {
+      max-width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Website Development Tracker</h1>
+    <div class="tracker">
+      <h2>Progress Tracker</h2>
+      <div id="stages"></div>
+      <button class="reset-btn" onclick="resetProgress()">Reset Progress</button>
+    </div>
+    <div class="chart">
+      <h2>Gantt Chart Visualization</h2>
+      <canvas id="ganttChart"></canvas>
+    </div>
+  </div>
+  <script>
+    // Initial stages data
+    const initialStages = [
+      { id: 1, name: "Planning & Discovery", status: "Not Started", duration: 14 },
+      { id: 2, name: "Design", status: "Not Started", duration: 28 },
+      { id: 3, name: "Development - Setup", status: "Not Started", duration: 42 },
+      { id: 4, name: "Content Integration", status: "Not Started", duration: 28 },
+      { id: 5, name: "Testing & Refinement", status: "Not Started", duration: 21 },
+      { id: 6, name: "Quality Assurance", status: "Not Started", duration: 14 },
+      { id: 7, name: "Deployment", status: "Not Started", duration: 2 },
+      { id: 8, name: "Post-Launch Maintenance", status: "Not Started", duration: 30 },
+    ];
+
+    // Load stages from LocalStorage or use initial data
+    let stages = JSON.parse(localStorage.getItem("stages")) || initialStages;
+
+    // Render stages
+    function renderStages() {
+      const stagesContainer = document.getElementById("stages");
+      stagesContainer.innerHTML = "";
+      stages.forEach((stage) => {
+        const stageDiv = document.createElement("div");
+        stageDiv.className = "stage";
+        stageDiv.innerHTML = `
+          <span>${stage.name}</span>
+          <select onchange="updateStatus(${stage.id}, this.value)">
+            <option value="Not Started" ${stage.status === "Not Started" ? "selected" : ""}>Not Started</option>
+            <option value="In Progress" ${stage.status === "In Progress" ? "selected" : ""}>In Progress</option>
+            <option value="Completed" ${stage.status === "Completed" ? "selected" : ""}>Completed</option>
+          </select>
+        `;
+        stagesContainer.appendChild(stageDiv);
+      });
+      updateChart();
+    }
+
+    // Update stage status
+    function updateStatus(id, newStatus) {
+      stages = stages.map((stage) =>
+        stage.id === id ? { ...stage, status: newStatus } : stage
+      );
+      localStorage.setItem("stages", JSON.stringify(stages));
+      renderStages();
+    }
+
+    // Reset progress
+    function resetProgress() {
+      stages = initialStages;
+      localStorage.setItem("stages", JSON.stringify(stages));
+      renderStages();
+    }
+
+    // Initialize chart
+    let chart;
+    function updateChart() {
+      const ctx = document.getElementById("ganttChart").getContext("2d");
+      if (chart) chart.destroy();
+      chart = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: stages.map((stage) => stage.name),
+          datasets: [
+            {
+              label: "Project Timeline",
+              data: stages.map((stage) => ({
+                x: stage.duration,
+                y: stage.name,
+              })),
+              backgroundColor: stages.map((stage) =>
+                stage.status === "Completed"
+                  ? "rgba(40, 167, 69, 0.5)"
+                  : stage.status === "In Progress"
+                  ? "rgba(0, 123, 255, 0.5)"
+                  : "rgba(108, 117, 125, 0.5)"
+              ),
+              borderColor: stages.map((stage) =>
+                stage.status === "Completed"
+                  ? "rgba(40, 167, 69, 1)"
+                  : stage.status === "In Progress"
+                  ? "rgba(0, 123, 255, 1)"
+                  : "rgba(108, 117, 125, 1)"
+              ),
+              borderWidth: 1,
+            },
+          ],
+        },
+        options: {
+          indexAxis: "y",
+          scales: {
+            x: { title: { display: true, text: "Days" } },
+            y: { title: { display: true, text: "Stages" } },
+          },
+          plugins: {
+            title: { display: true, text: "Website Development Timeline" },
+          },
+        },
+      });
+    }
+
+    // Initial render
+    renderStages();
+  </script>
+</body>
+</html>
