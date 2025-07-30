@@ -238,7 +238,7 @@
       currentWebsite.stages.forEach((stage) => {
         const stageDiv = document.createElement("div");
         stageDiv.className = "stage";
-        const dateDisplay = stage.estimatedDate ? ` - Begin ${stage.estimatedDate}` : "";
+        const dateDisplay = stage.estimatedDate ? ` - Begins ${stage.estimatedDate}` : "";
         stageDiv.innerHTML = `
           <span>${stage.name} (${stage.duration} day${stage.duration !== 1 ? "s" : ""})${dateDisplay}</span>
           <select onchange="updateStatus(${stage.id}, this.value)">
@@ -338,14 +338,14 @@
         type: "bar",
         data: {
           labels: currentWebsite.stages.map((stage) => {
-            const dateDisplay = stage.estimatedDate ? ` - Begin ${stage.estimatedDate}` : "";
+            const dateDisplay = stage.estimatedDate ? ` - Begins ${stage.estimatedDate}` : "";
             return `${stage.name} (${stage.duration} day${stage.duration !== 1 ? "s" : ""})${dateDisplay}`;
           }),
           datasets: [
             {
               label: "Project Timeline",
               data: currentWebsite.stages.map((stage) => {
-                const dateDisplay = stage.estimatedDate ? ` - Begin ${stage.estimatedDate}` : "";
+                const dateDisplay = stage.estimatedDate ? ` - Begins ${stage.estimatedDate}` : "";
                 return { x: stage.duration, y: `${stage.name} (${stage.duration} day${stage.duration !== 1 ? "s" : ""})${dateDisplay}` };
               }),
               backgroundColor: currentWebsite.stages.map((stage) =>
