@@ -21,6 +21,28 @@
       color: #333;
       margin-bottom: 20px;
     }
+    .tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .tab {
+      padding: 10px 20px;
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 4px 4px 0 0;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    .tab.active {
+      background: #007bff;
+      color: #fff;
+      border-bottom: none;
+    }
+    .tab:hover {
+      background: #e9ecef;
+    }
     .tracker, .chart {
       background: #fff;
       padding: 20px;
@@ -44,6 +66,7 @@
     .stage span {
       font-size: 16px;
       color: #333;
+      flex: 1;
     }
     select {
       padding: 8px;
@@ -52,18 +75,40 @@
       font-size: 14px;
       cursor: pointer;
     }
-    .reset-btn {
-      display: block;
-      margin: 15px 0;
+    .btn {
       padding: 10px 20px;
-      background: #dc3545;
-      color: #fff;
+      margin: 5px;
       border: none;
       border-radius: 4px;
       cursor: pointer;
       font-size: 16px;
     }
-    .reset-btn:hover {
+    .add-btn {
+      background: #28a745;
+      color: #fff;
+    }
+    .add-btn:hover {
+      background: #218838;
+    }
+    .export-btn {
+      background: #17a2b8;
+      color: #fff;
+    }
+    .export-btn:hover {
+      background: #138496;
+    }
+    .import-btn {
+      background: #6c757d;
+      color: #fff;
+    }
+    .import-btn:hover {
+      background: #5a6268;
+    }
+    .reset-btn, .delete-btn {
+      background: #dc3545;
+      color: #fff;
+    }
+    .reset-btn:hover, .delete-btn:hover {
       background: #c82333;
     }
     canvas {
@@ -74,41 +119,116 @@
 <body>
   <div class="container">
     <h1>Website Development Tracker</h1>
+    <div class="tabs" id="tabs"></div>
+    <div>
+      <button class="btn add-btn" onclick="addWebsite()">Add Website</button>
+      <button class="btn export-btn" onclick="exportData()">Export Data</button>
+      <input type="file" id="importFile" style="display: none;" accept=".json" onchange="importData(event)">
+      <button class="btn import-btn" onclick="document.getElementById('importFile').click()">Import Data</button>
+    </div>
     <div class="tracker">
       <h2>Progress Tracker</h2>
       <div id="stages"></div>
-      <button class="reset-btn" onclick="resetProgress()">Reset Progress</button>
+      <button class="btn reset-btn" onclick="resetProgress()">Reset Current Website Progress</button>
     </div>
     <div class="chart">
       <h2>Gantt Chart Visualization</h2>
       <canvas id="ganttChart"></canvas>
+      <button class="btn delete-btn" onclick="deleteWebsite()">Delete Current Website</button>
     </div>
   </div>
   <script>
-    // Initial stages data
-    const initialStages = [
-      { id: 1, name: "Planning & Discovery", status: "Not Started", duration: 14 },
-      { id: 2, name: "Design", status: "Not Started", duration: 28 },
-      { id: 3, name: "Development - Setup", status: "Not Started", duration: 42 },
-      { id: 4, name: "Content Integration", status: "Not Started", duration: 28 },
-      { id: 5, name: "Testing & Refinement", status: "Not Started", duration: 21 },
-      { id: 6, name: "Quality Assurance", status: "Not Started", duration: 14 },
-      { id: 7, name: "Deployment", status: "Not Started", duration: 2 },
-      { id: 8, name: "Post-Launch Maintenance", status: "Not Started", duration: 30 },
+    // Initial stage template
+    const stageTemplate = [
+      { id: 1, name: "Kick-off Call", status: "Not Started", duration: 1 },
+      { id: 2, name: "Design Sign-off", status: "Not Started", duration: 7 },
+      { id: 3, name: "UAT Development", status: "Not Started", duration: 14 },
+      { id: 4, name: "Site moved to production", status: "Not Started", duration: 1 },
+      { id: 5, name: "Add content", status: "Not Started", duration: 60 },
+      { id: 6, name: "Revisions", status: "Not Started", duration: 14 },
+      { id: 7, name: "Quality Assurance (QA doc and ADA)", status: "Not Started", duration: 2 },
+      { id: 8, name: "Deployment", status: "Not Started", duration: 1 },
+      { id: 9, name: "Post-Launch Maintenance", status: "Not Started", duration: 14 },
     ];
 
-    // Load stages from LocalStorage or use initial data
-    let stages = JSON.parse(localStorage.getItem("stages")) || initialStages;
+    // Load websites from LocalStorage or initialize empty
+    let websites = JSON.parse(localStorage.getItem("websites")) || [];
+    let currentWebsiteId = parseInt(localStorage.getItem("currentWebsiteId")) || null;
 
-    // Render stages
+    // Render tabs
+    function renderTabs() {
+      const tabsContainer = document.getElementById("tabs");
+      tabsContainer.innerHTML = "";
+      websites.forEach((website) => {
+        const tab = document.createElement("div");
+        tab.className = `tab ${website.id === currentWebsiteId ? "active" : ""}`;
+        tab.textContent = website.name;
+        tab.onclick = () => switchWebsite(website.id);
+        tabsContainer.appendChild(tab);
+      });
+    }
+
+    // Switch to a different website
+    function switchWebsite(id) {
+      currentWebsiteId = id;
+      localStorage.setItem("currentWebsiteId", currentWebsiteId);
+      renderTabs();
+      renderStages();
+    }
+
+    // Add a new website
+    function addWebsite() {
+      const name = prompt("Enter website name:");
+      if (name) {
+        const newId = Math.max(...websites.map(w => w.id), 0) + 1;
+        websites.push({ id: newId, name, stages: [...stageTemplate] });
+        currentWebsiteId = newId;
+        localStorage.setItem("websites", JSON.stringify(websites));
+        localStorage.setItem("currentWebsiteId", currentWebsiteId);
+        renderTabs();
+        renderStages();
+      }
+    }
+
+    // Delete the current website
+    function deleteWebsite() {
+      if (!currentWebsiteId) return;
+      if (confirm("Are you sure you want to delete the current website?")) {
+        websites = websites.filter(website => website.id !== currentWebsiteId);
+        if (websites.length === 0) {
+          currentWebsiteId = null;
+          localStorage.setItem("currentWebsiteId", "");
+        } else {
+          currentWebsiteId = websites[0].id;
+          localStorage.setItem("currentWebsiteId", currentWebsiteId);
+        }
+        localStorage.setItem("websites", JSON.stringify(websites));
+        renderTabs();
+        renderStages();
+        if (websites.length === 0) {
+          setTimeout(() => {
+            alert("No websites found. Please add a website to start tracking.");
+            addWebsite();
+          }, 0);
+        }
+      }
+    }
+
+    // Render stages for the current website
     function renderStages() {
+      const currentWebsite = websites.find(w => w.id === currentWebsiteId);
       const stagesContainer = document.getElementById("stages");
       stagesContainer.innerHTML = "";
-      stages.forEach((stage) => {
+      if (!currentWebsite) {
+        stagesContainer.innerHTML = "<p>No website selected. Please add a website.</p>";
+        if (chart) chart.destroy();
+        return;
+      }
+      currentWebsite.stages.forEach((stage) => {
         const stageDiv = document.createElement("div");
         stageDiv.className = "stage";
         stageDiv.innerHTML = `
-          <span>${stage.name}</span>
+          <span>${stage.name} (${stage.duration} day${stage.duration !== 1 ? "s" : ""})</span>
           <select onchange="updateStatus(${stage.id}, this.value)">
             <option value="Not Started" ${stage.status === "Not Started" ? "selected" : ""}>Not Started</option>
             <option value="In Progress" ${stage.status === "In Progress" ? "selected" : ""}>In Progress</option>
@@ -122,44 +242,93 @@
 
     // Update stage status
     function updateStatus(id, newStatus) {
-      stages = stages.map((stage) =>
-        stage.id === id ? { ...stage, status: newStatus } : stage
+      websites = websites.map(website =>
+        website.id === currentWebsiteId
+          ? {
+              ...website,
+              stages: website.stages.map(stage =>
+                stage.id === id ? { ...stage, status: newStatus } : stage
+              )
+            }
+          : website
       );
-      localStorage.setItem("stages", JSON.stringify(stages));
+      localStorage.setItem("websites", JSON.stringify(websites));
       renderStages();
     }
 
-    // Reset progress
+    // Reset progress for the current website
     function resetProgress() {
-      stages = initialStages;
-      localStorage.setItem("stages", JSON.stringify(stages));
+      if (!currentWebsiteId) return;
+      websites = websites.map(website =>
+        website.id === currentWebsiteId
+          ? { ...website, stages: [...stageTemplate] }
+          : website
+      );
+      localStorage.setItem("websites", JSON.stringify(websites));
       renderStages();
+    }
+
+    // Export data to JSON file
+    function exportData() {
+      const data = JSON.stringify({ websites, currentWebsiteId });
+      const blob = new Blob([data], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "website-tracker-data.json";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // Import data from JSON file
+    function importData(event) {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          try {
+            const data = JSON.parse(e.target.result);
+            websites = data.websites || [];
+            currentWebsiteId = data.currentWebsiteId || websites[0]?.id || null;
+            localStorage.setItem("websites", JSON.stringify(websites));
+            localStorage.setItem("currentWebsiteId", currentWebsiteId || "");
+            renderTabs();
+            renderStages();
+            alert("Data imported successfully!");
+          } catch (error) {
+            alert("Error importing data: Invalid JSON file.");
+          }
+        };
+        reader.readAsText(file);
+      }
     }
 
     // Initialize chart
     let chart;
     function updateChart() {
+      const currentWebsite = websites.find(w => w.id === currentWebsiteId);
       const ctx = document.getElementById("ganttChart").getContext("2d");
       if (chart) chart.destroy();
+      if (!currentWebsite) return;
       chart = new Chart(ctx, {
         type: "bar",
         data: {
-          labels: stages.map((stage) => stage.name),
+          labels: currentWebsite.stages.map((stage) => `${stage.name} (${stage.duration} day${stage.duration !== 1 ? "s" : ""})`),
           datasets: [
             {
               label: "Project Timeline",
-              data: stages.map((stage) => ({
+              data: currentWebsite.stages.map((stage) => ({
                 x: stage.duration,
-                y: stage.name,
+                y: `${stage.name} (${stage.duration} day${stage.duration !== 1 ? "s" : ""})`,
               })),
-              backgroundColor: stages.map((stage) =>
+              backgroundColor: currentWebsite.stages.map((stage) =>
                 stage.status === "Completed"
                   ? "rgba(40, 167, 69, 0.5)"
                   : stage.status === "In Progress"
                   ? "rgba(0, 123, 255, 0.5)"
                   : "rgba(108, 117, 125, 0.5)"
               ),
-              borderColor: stages.map((stage) =>
+              borderColor: currentWebsite.stages.map((stage) =>
                 stage.status === "Completed"
                   ? "rgba(40, 167, 69, 1)"
                   : stage.status === "In Progress"
@@ -177,14 +346,23 @@
             y: { title: { display: true, text: "Stages" } },
           },
           plugins: {
-            title: { display: true, text: "Website Development Timeline" },
+            title: { display: true, text: `${currentWebsite.name} Development Timeline` },
           },
         },
       });
     }
 
     // Initial render
-    renderStages();
+    if (websites.length === 0) {
+      setTimeout(() => {
+        alert("No websites found. Please add a website to start tracking.");
+        addWebsite();
+      }, 0);
+    } else {
+      currentWebsiteId = parseInt(localStorage.getItem("currentWebsiteId")) || websites[0].id;
+      renderTabs();
+      renderStages();
+    }
   </script>
 </body>
 </html>
