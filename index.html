@@ -140,20 +140,31 @@
   <script>
     // Initial stage template
     const stageTemplate = [
-      { id: 1, name: "Kick-off Call", status: "Not Started", duration: 1 },
-      { id: 2, name: "Design Sign-off", status: "Not Started", duration: 7 },
-      { id: 3, name: "UAT Development", status: "Not Started", duration: 14 },
-      { id: 4, name: "Site moved to production", status: "Not Started", duration: 1 },
-      { id: 5, name: "Add content", status: "Not Started", duration: 60 },
-      { id: 6, name: "Revisions", status: "Not Started", duration: 14 },
-      { id: 7, name: "Quality Assurance (QA doc and ADA)", status: "Not Started", duration: 2 },
-      { id: 8, name: "Deployment", status: "Not Started", duration: 1 },
-      { id: 9, name: "Post-Launch Maintenance", status: "Not Started", duration: 14 },
+      { id: 1, name: "Kick-off Call", status: "Not Started", duration: 1, estimatedDate: null },
+      { id: 2, name: "Design Sign-off", status: "Not Started", duration: 7, estimatedDate: null },
+      { id: 3, name: "UAT Development", status: "Not Started", duration: 14, estimatedDate: null },
+      { id: 4, name: "Site moved to production", status: "Not Started", duration: 1, estimatedDate: null },
+      { id: 5, name: "Add content", status: "Not Started", duration: 60, estimatedDate: null },
+      { id: 6, name: "Revisions", status: "Not Started", duration: 14, estimatedDate: null },
+      { id: 7, name: "Quality Assurance (QA doc and ADA)", status: "Not Started", duration: 2, estimatedDate: null },
+      { id: 8, name: "Deployment", status: "Not Started", duration: 1, estimatedDate: null },
+      { id: 9, name: "Post-Launch Maintenance", status: "Not Started", duration: 14, estimatedDate: null },
     ];
 
     // Load websites from LocalStorage or initialize empty
     let websites = JSON.parse(localStorage.getItem("websites")) || [];
     let currentWebsiteId = parseInt(localStorage.getItem("currentWebsiteId")) || null;
+
+    // Function to calculate estimated dates
+    function calculateEstimatedDates(stages) {
+      const startDate = new Date(2025, 6, 30, 0, 0, 0, 0); // Jul 30, 2025, 00:00:00
+      let currentDate = new Date(startDate);
+      return stages.map((stage) => {
+        const estimatedDate = new Date(currentDate);
+        currentDate.setDate(currentDate.getDate() + stage.duration);
+        return { ...stage, estimatedDate: estimatedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) };
+      });
+    }
 
     // Render tabs
     function renderTabs() {
@@ -227,8 +238,9 @@
       currentWebsite.stages.forEach((stage) => {
         const stageDiv = document.createElement("div");
         stageDiv.className = "stage";
+        const dateDisplay = stage.estimatedDate ? ` - Begin ${stage.estimatedDate}` : "";
         stageDiv.innerHTML = `
-          <span>${stage.name} (${stage.duration} day${stage.duration !== 1 ? "s" : ""})</span>
+          <span>${stage.name} (${stage.duration} day${stage.duration !== 1 ? "s" : ""})${dateDisplay}</span>
           <select onchange="updateStatus(${stage.id}, this.value)">
             <option value="Not Started" ${stage.status === "Not Started" ? "selected" : ""}>Not Started</option>
             <option value="In Progress" ${stage.status === "In Progress" ? "selected" : ""}>In Progress</option>
@@ -246,9 +258,21 @@
         website.id === currentWebsiteId
           ? {
               ...website,
-              stages: website.stages.map(stage =>
-                stage.id === id ? { ...stage, status: newStatus } : stage
-              )
+              stages: website.stages.map(stage => {
+                if (stage.id === id) {
+                  if (stage.id === 1 && newStatus === "Completed") {
+                    // When Kick-off Call is completed, set estimated dates for all stages
+                    website.stages = calculateEstimatedDates(website.stages);
+                    return { ...stage, status: newStatus, estimatedDate: website.stages.find(s => s.id === id).estimatedDate };
+                  } else if (stage.id === 1 && newStatus !== "Completed") {
+                    // Clear estimated dates if Kick-off Call is not completed
+                    return { ...stage, status: newStatus, estimatedDate: null };
+                  }
+                  return { ...stage, status: newStatus };
+                }
+                // Update estimatedDate for other stages when Kick-off Call status changes
+                return stage.id === 1 ? stage : { ...stage, estimatedDate: website.stages.find(s => s.id === stage.id).estimatedDate };
+              })
             }
           : website
       );
@@ -313,14 +337,17 @@
       chart = new Chart(ctx, {
         type: "bar",
         data: {
-          labels: currentWebsite.stages.map((stage) => `${stage.name} (${stage.duration} day${stage.duration !== 1 ? "s" : ""})`),
+          labels: currentWebsite.stages.map((stage) => {
+            const dateDisplay = stage.estimatedDate ? ` - Begin ${stage.estimatedDate}` : "";
+            return `${stage.name} (${stage.duration} day${stage.duration !== 1 ? "s" : ""})${dateDisplay}`;
+          }),
           datasets: [
             {
               label: "Project Timeline",
-              data: currentWebsite.stages.map((stage) => ({
-                x: stage.duration,
-                y: `${stage.name} (${stage.duration} day${stage.duration !== 1 ? "s" : ""})`,
-              })),
+              data: currentWebsite.stages.map((stage) => {
+                const dateDisplay = stage.estimatedDate ? ` - Begin ${stage.estimatedDate}` : "";
+                return { x: stage.duration, y: `${stage.name} (${stage.duration} day${stage.duration !== 1 ? "s" : ""})${dateDisplay}` };
+              }),
               backgroundColor: currentWebsite.stages.map((stage) =>
                 stage.status === "Completed"
                   ? "rgba(40, 167, 69, 0.5)"
